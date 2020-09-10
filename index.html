@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMS -Son 2</title>
+    <script async src="js/opencv.js" onload="setTimeout(openCvReady, 10000)"></script>
+    <script src="js/utils.js"></script>
+
+
+
+	
+	
+	<style type="text/css">
+   body {
+  font: 14px "Open Sans", "Arial", sans-serif;
+    max-width: 80%;
+    margin: 50px auto;
+}
+
+video {
+  margin-top: 2px;
+  border: 1px solid black;
+}
+
+.button {
+  cursor: pointer;
+  display: block;
+  width: 160px;
+  border: 1px solid black;
+  font-size: 16px;
+  text-align: center;
+  padding-top: 2px;
+  padding-bottom: 4px;
+  color: white;
+  background-color: darkgreen;
+  text-decoration: none;
+}
+
+h2 {
+  margin-bottom: 4px;
+}
+
+.left {
+  margin-right: 10px;
+  float: left;
+  width: 160px;
+  padding: 0px;
+}
+
+.right {
+  margin-left: 10px;
+  float: left;
+  width: 160px;
+  padding: 0px;
+}
+
+.bottom {
+  clear: both;
+  padding-top: 10px;
+  margin: 5px
+}
+ #test_video {
+    width: 720px;
+    }
+
+    .controls {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    }
+    input.input, .form-inline .input-group>.form-control {
+    width: 300px;
+    }
+    .logs {
+    overflow: auto;
+    width: 720px;
+    height: 150px;
+    padding: 5px;
+    border-top: solid 1px gray;
+    border-bottom: solid 1px gray;
+    }
+  </style>
+
+</head>
+<body>
+<div id="sourcesNode" onload="init_api()"></div>
+<div>
+    <input  id="stream_url" size="36">
+    <button class="btn btn-success"  id="set_new_url">ÇALIŞTIR</button>
+</div>
+<div>
+    <p style="color:#808080">RTSP'linkini Giriniz, Örneğin: "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"</p>
+</div>
+
+<div>
+    <input id="buffer_duration" type="range" min="10" max="200" style="width:40%;">
+    <span  id="buffer_value">120Sn.</span>
+</div>
+
+<div>
+    <p style="color:#808080">Arabellek süresini değiştir</p>
+</div>
+
+<video style = "display: ;" width="640" height="480" id="test_video" controls  autoplay="true" muted="muted">
+    <!--<source src="rtsp://192.168.10.205:554/ch01.264" type="application/x-rtsp">-->
+    <!--<source src="rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov" type="application/x-rtsp">-->
+</video>
+  <canvas id="canvas_output"></canvas>
+<div class="controls form">
+    <div style = "display:none;">
+        Çalma oranı:&nbsp;
+        <input id="rate" class="input" type="range" min="0.5" max="5.0" value="0.5" step="0.5">
+        <output for="rate" style = "display:none;"id="rate_res">live</output>
+    </div>
+    <div>
+        <button id="to_end" style = "display:none;" class="btn btn-success">live</button>
+    </div>
+</div>
+
+
+<div style = "display:none;" id="pllogs" class="logs"></div>
+<button style = "display:none;" class="btn btn-success" onclick="cleanLog(pllogs)">clear</button>
+<button style = "display:none;" class="btn btn-success" onclick="scrollset(pllogs, true)">scroll up</button>
+<button style = "display:none;" class="btn btn-success" onclick="scrollset(pllogs, false)">scroll down</button>
+<button style = "display:none;" id="scrollSetPl" class="btn btn-success" onclick="scrollswitch(pllogs)">Scroll off</button>
+
+
+
+
+
+
+<!--
+
+<div class="left">
+  <div id="startButton" class="button">
+    Start
+  </div>
+  <h2>Preview</h2>
+  <video id="preview" width="160" height="120" autoplay muted></video>
+</div>
+<div class="right">
+  <div id="stopButton" class="button">
+    Stop
+  </div>
+  <h2>Recording</h2>
+  <video id="recording" width="160" height="120" controls></video>
+  <a id="downloadButton" class="button">
+    Download
+  </a>
+</div>
+<div class="bottom">
+  <pre id="log"></pre>
+</div>
+
+
+
+
+
+<br/><input type="button" onclick="connect()" value="PLAY"/>
+-->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="free.player.1.8.5.js"></script> <!-- Path to player js-->
+
+<script>
+/*
+    var scrollStatPl = true;
+    var scrollStatWs = true;
+    var pllogs = document.getElementById("pllogs");
+    var wslogs = document.getElementById("wslogs");
+
+    // define a new console
+    var console=(function(oldConsole){
+        return {
+            log: function(){
+                oldConsole.log(newConsole(arguments, "black", "#A9F5A9"));
+            },
+            info: function () {
+                oldConsole.info(newConsole(arguments, "black", "#A9F5A9"));
+            },
+            warn: function () {
+                oldConsole.warn(newConsole(arguments, "black", "#F3F781"));
+            },
+            error: function () {
+                oldConsole.error(newConsole(arguments, "black", "#F5A9A9"));
+            }
+        };
+    }(window.console));
+
+    function newConsole(args, textColor, backColor){
+        let text = '';
+        let node = document.createElement("div");
+        for (let arg in args){
+            text +=' ' + args[arg];
+        }
+        node.appendChild(document.createTextNode(text));
+        node.style.color = textColor;
+        node.style.backgroundColor = backColor;
+        pllogs.appendChild(node);
+        autoscroll(pllogs);
+        return text;
+    }
+
+    //Then redefine the old console
+    window.console = console;
+
+    function cleanLog(element){
+        while (element.firstChild) {
+            element.removeChild(element.firstChild);
+        }
+    }
+
+    function autoscroll(element){
+        if(scrollStatus(element)){
+            element.scrollTop = element.scrollHeight;
+        }
+        if(element.childElementCount > 1000){
+            element.removeChild(element.firstChild);
+        }
+    }
+
+    function scrollset(element, state){
+        if(state){
+            element.scrollTop = 0;
+            scrollChange(element, false);
+        } else {
+            element.scrollTop = element.scrollHeight;
+            scrollChange(element, true);
+        }
+    }
+
+    function scrollswitch(element){
+        if(scrollStatus(element)){
+            scrollChange(element, false);
+        } else {
+            scrollChange(element, true);
+        }
+    }
+
+    function scrollChange(element, status){
+        if(scrollStatus(element)){
+            scrollStatPl = false;
+            document.getElementById("scrollSetPl").innerText = "Scroll on";
+        } else {
+            scrollStatPl = true;
+            document.getElementById("scrollSetPl").innerText = "Scroll off";
+        }
+    }
+
+    function scrollStatus(element){
+        if(element.id === "pllogs"){
+            return scrollStatPl;
+        } else {
+            return scrollStatWs;
+        }
+    }
+
+*/
+</script>
+
+<script>
+    if (window.Streamedian) {
+        let errHandler = function(err){
+            alert(err.message);
+        };
+
+        let infHandler = function(inf) {
+            let sourcesNode = document.getElementById("sourcesNode");
+            let clients = inf.clients;
+            sourcesNode.innerHTML = "";
+
+            for (let client in clients) {
+                clients[client].forEach((sources) => {
+                    let nodeButton = document.createElement("button");
+                    nodeButton.setAttribute('data', sources.url + ' ' + client);
+                    nodeButton.appendChild(document.createTextNode(sources.description));
+                    nodeButton.onclick = (event)=> {
+                        setPlayerSource(event.target.getAttribute('data'));
+                    };
+                    sourcesNode.appendChild(nodeButton);
+                });
+            }
+        };
+
+        var playerOptions = {
+            socket: "ws://localhost:8088/ws/",            redirectNativeMediaErrors : true,
+            bufferDuration: 30,
+            errorHandler: errHandler,
+            infoHandler: infHandler
+        };
+
+        var html5Player  = document.getElementById("test_video");
+        var urlButton    = document.getElementById("set_new_url");
+        var urlEdit      = document.getElementById("stream_url");
+        var bufferRange  = document.getElementById("buffer_duration");
+        var bufferValue  = document.getElementById("buffer_value");
+
+        var player = Streamedian.player('test_video', playerOptions);
+        var nativePlayer = document.getElementById('test_video');
+        var range = document.getElementById('rate');
+        var set_live = document.getElementById('to_end');
+        var range_out = document.getElementById('rate_res');
+
+        range.addEventListener('input', function () {
+            nativePlayer.playbackRate = range.value;
+            range_out.innerHTML = `x${range.value}`;
+        });
+        set_live.addEventListener('click', function () {
+            range.value = 1.0;
+            range_out.innerHTML = `live`;
+            nativePlayer.playbackRate = 1;
+            nativePlayer.currentTime = nativePlayer.buffered.end(0);
+        });
+
+        var updateRangeControls = function(){
+            bufferRange.value     =  player.bufferDuration;
+            bufferValue.innerHTML = bufferRange.value + "Sn.";
+        };
+
+        bufferRange.addEventListener('input', function(){
+            var iValue = parseInt(this.value, 10);
+            player.bufferDuration = iValue;
+            bufferValue.innerHTML = this.value + "Sn.";
+        });
+
+        bufferRange.innerHTML = player.bufferDuration + "Sn.";
+        updateRangeControls();
+
+        urlButton.onclick = ()=> {
+            setPlayerSource(urlEdit.value);
+			logs.innerHTML = logs.innerHTML + '"Link Girişi Sağlandı":[ &nbsp;' + "</br>";
+			logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"URL":&nbsp; ' +urlEdit.value + "</br>";
+			logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Tarih":&nbsp;' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() + "</br>";
+			logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Saat":&nbsp;' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']' + "</br>" + "</br>";
+			console.log('"Link Girişi Sağlandı":[ ');
+			console.log('"		"URL": ' +urlEdit.value);
+			console.log('		"Tarih":' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() );
+			console.log('		"Saat":' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']');
+        };
+
+        function setPlayerSource(newSource) {
+            player.destroy();
+            player = null;
+            html5Player.src = newSource;
+            player = Streamedian.player("test_video", playerOptions);
+            updateRangeControls();
+        }
+    }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div id = "body_baran">
+		
+   <!--<video  style= "float:left; margin-right:5%;" id = "baran" width="1280" height="960" controls="controls"  autoplay="true" muted="muted">
+		<source src="video/arac1.mp4" type="audio/mp4"> 
+	</video>-->
+	<a style = "display: none;" id = "sendmail" href = 'mailto:burakbeyaz@piton.com.tr?body="Çoklu Geçiş Saptandı BMS den Sevgiler."&subject=3den Fazla Yakalam Oldu'>SEND EMAIL TO my@email.com</a>
+	<div class="left">
+  <div id="startButton" style = "display:none;"class="button">
+    Start
+  </div>
+  <h2 style = "display:none;">Preview</h2>
+  <video style = "display:none;" id="preview" width="160" height="120" autoplay muted></video>
+</div>
+<div style = "display:none;" id="kayit" class="right">
+  <div id="stopButton" style = "display:none;" class="button">
+    Stop
+  </div>
+  <h2 style = "display:none;" >Recording</h2>
+  <video id="recording" width="1280" height="960" controls></video>
+  <a id="downloadButton" class="btn btn-success">
+    Video İndir
+  </a>
+</div>
+
+
+	
+	
+   <!-- <video id="cam_input" height="480" width="640"></video> -->
+
+  
+
+	
+	<div class = "" style = " font-size:250%; margin-top: 2%;">
+	<center>
+	<button type="button" name= "sayac_durum" style = "font-size:100%; " onclick = "sayac_durum('start')" class="btn btn-success">SAYAÇLARI BAŞLAT</button>
+	<button type="button" name= "sayac_durum" style = "font-size:100%;  display:none;" onclick = "sayac_durum('stop')" class="btn btn-danger" >SAYAÇLARI DURDUR</button>
+	<button type="button" name= "sayac_durum" style = "font-size:100%; " onclick = "sayac_durum('zero')"class="btn btn-warning">SAYAÇLARI SIFIRLA</button>
+	</center>
+	</div>
+	</br>
+	<form class = "col-xs-6 col-md-4" style = "margin-left: 15%; font-size:250%; float:left;">
+		</br>
+		<label for="gelen_min_y" class="col-2 col-form-label " style = "color:green; font-size:150%; float:left;">GELEN ARAÇ = </label><div id="sayac" style = "margin-left:50%; font-size:150%; ">0</div>
+			<div class="form-group row ">
+			</br>
+			  <label for="gelen_min_y" class="col-2 col-form-label " style = "color:red;  float:left;">Gelen Minimum Y = </label> <div id="gelen_min_y_deger" style = "margin-left:25%;  ">400</div>
+			  <div class="" style = " margin-right: 70%;">
+				<input class="form-control " style="font-size:100%;" type="number"  min = "5" onchange = "degis('gelen_min_y')" max = "950" id="gelen_min_y" placeholder = "Minimum 5">
+			  </div>
+			</div>
+			<div class="form-group row">
+			  <label for="gelen_max_y" class="col-2 col-form-label" style = "color:red;  float:left;">Gelen Maksimum Y =</label><div id="gelen_max_y_deger" style = "margin-left:25%;  ">435</div>
+			  <div class="col-10" style = " margin-right: 70%;">
+				<input class="form-control" style="font-size:100%; "  type="number"  min = "10" onchange = "degis('gelen_max_y')" max = "955" id="gelen_max_y" placeholder = "Maksimum 955">
+			  </div>
+			</div>
+			
+			<div class="form-group row">
+			  <label for="gelen_min_x" class="col-2 col-form-label" style = "color:red;  float:left;">Gelen Minimum X =</label><div id="gelen_min_x_deger" style = "margin-left:25%;  ">0</div>
+			  <div class="col-10" style = " margin-right: 70%;">
+				<input class="form-control" style="font-size:100%;"  type="number"  min = "5" onchange = "degis('gelen_min_x')" max = "1270" id="gelen_min_x" placeholder = "Minimum 5">
+			  </div>
+			</div>
+			<div class="form-group row">
+			  <label for="gelen_max_x" class="col-2 col-form-label" style = "color:red;  float:left;">Gelen Maksimum X =</label><div id="gelen_max_x_deger" style = "margin-left:25%; ">1200</div>
+			  <div class="col-10" style = " margin-right: 70%;">
+				<input class="form-control" style="font-size:100%;"  type="number"  min = "10" onchange = "degis('gelen_max_x')" max = "1275" id="gelen_max_x" placeholder = "Maksimum 1275">
+			  </div>
+			</div>
+	  
+	</form>
+	
+	<form class = "col-xs-6 col-md-4" style = "margin-left: 15%; font-size:250%; float:left;">
+		</br>
+		<label for="giden_min_y" class="col-2 col-form-label " style = "color:blue; font-size:150%; float:left;">GİDEN ARAÇ = </label><div id="sayac2" style = "margin-left:50%; font-size:150%; ">0</div>
+			<div class="form-group row ">
+			</br>
+			  <label for="giden_min_y" class="col-2 col-form-label " style = "color:red;  float:left;">Giden Minimum Y = </label> <div id="giden_min_y_deger" style = "margin-left:25%;  ">310</div>
+			  <div class="" style = " margin-right: 70%;">
+				<input class="form-control " style="font-size:100%;" type="number"  min = "5" onchange = "degis('giden_min_y')" max = "950" id="giden_min_y" placeholder = "Minimum 5">
+			  </div>
+			</div>
+			<div class="form-group row">
+			  <label for="giden_max_y" class="col-2 col-form-label" style = "color:red;  float:left;">Giden Maksimum Y =</label><div id="giden_max_y_deger" style = "margin-left:25%;  ">335</div>
+			  <div class="col-10" style = " margin-right: 70%;">
+				<input class="form-control" style="font-size:100%; "  type="number"  min = "10" onchange = "degis('giden_max_y')" max = "955" id="giden_max_y" placeholder = "Maksimum 955">
+			  </div>
+			</div>
+			
+			<div class="form-group row">
+			  <label for="giden_min_x" class="col-2 col-form-label" style = "color:red;  float:left;">Giden Minimum X =</label><div id="giden_min_x_deger" style = "margin-left:25%;  ">900</div>
+			  <div class="col-10" style = " margin-right: 70%;">
+				<input class="form-control" style="font-size:100%;"  type="number"  min = "5" onchange = "degis('giden_min_x')" max = "1270" id="giden_min_x" placeholder = "Minimum 5">
+			  </div>
+			</div>
+			<div class="form-group row">
+			  <label for="giden_max_x" class="col-2 col-form-label" style = "color:red;  float:left;">Giden Maksimum X =</label><div id="giden_max_x_deger" style = "margin-left:25%; ">1150</div>
+			  <div class="col-10" style = " margin-right: 70%;">
+				<input class="form-control" style="font-size:100%;"  type="number"  min = "10" onchange = "degis('giden_max_x')" max = "1275" id="giden_max_x" placeholder = "Maksimum 1275">
+			  </div>
+			</div>
+	  
+	</form>
+	</br>
+<div style = "display:;" class="bottom">
+
+  <div id="logs" class="overflow-auto" style = "height: 200px; overflow: scroll;">
+
+</div>
+</div>
+
+<div id = "xxx"> </div>
+	
+	</br>
+<div style = "display:none;" class="bottom">
+  <pre id="log"></pre>
+  
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+
+
+
+
+<script>
+let preview = document.getElementById("preview");
+let preview2 = document.getElementById("test_video");
+let recording = document.getElementById("recording");
+let startButton = document.getElementById("startButton");
+let stopButton = document.getElementById("stopButton");
+let downloadButton = document.getElementById("downloadButton");
+let logElement = document.getElementById("log");
+
+let recordingTimeMS = 50000;
+function log(msg) {
+  logElement.innerHTML += msg + "\n";
+}
+function wait(delayInMS) {
+  return new Promise(resolve => setTimeout(resolve, delayInMS));
+}
+function startRecording(stream, lengthInMS) {
+var options2 = {
+        mimeType: 'video/webm;codecs=H264'
+      };
+  let recorder = new MediaRecorder(stream);
+  let data = [];
+ 
+  recorder.ondataavailable = event => data.push(event.data, options2);
+  recorder.start();
+  log(recorder.state + " for " + (lengthInMS/1000) + " seconds...");
+ 
+  let stopped = new Promise((resolve, reject) => {
+    recorder.onstop = resolve;
+    recorder.onerror = event => reject(event.name);
+  });
+
+  let recorded = wait(lengthInMS).then(
+    () => recorder.state == "recording" && recorder.stop()
+  );
+ 
+  return Promise.all([
+    stopped,
+    recorded
+  ])
+  .then(() => data);
+}
+function stop(stream) {
+  stream.getTracks().forEach(track => track.stop());
+}
+startButton.addEventListener("click", function() {
+ /* navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: true
+  }).then(stream => {
+    preview.srcObject = stream;
+    downloadButton.href = stream;
+    preview.captureStream = preview.captureStream || preview.mozCaptureStream;
+    return new Promise(resolve => preview.onplaying = resolve);
+  }).then(() => */(startRecording(preview2.captureStream(), recordingTimeMS))
+  .then (recordedChunks => {
+    let recordedBlob = new Blob(recordedChunks, { type: "video/webm" });
+    recording.src = URL.createObjectURL(recordedBlob);
+    downloadButton.href = recording.src;
+    downloadButton.download = "RecordedVideo.";
+    
+    log("Successfully recorded " + recordedBlob.size + " bytes of " +
+        recordedBlob.type + " media.");
+  })
+  .catch(log);
+}, false);stopButton.addEventListener("click", function() {
+  stop(preview.srcObject);
+}, false);
+</script>
+
+
+
+
+
+
+<script type="text/JavaScript">
+
+
+function openCvReady() {
+	
+
+	
+	var face_x = new Array();
+	var face_y = new Array();
+	var face_x_giden = new Array();
+	var face_y_giden = new Array();
+    var mail_kontrol = 0;
+	var j = 0;
+	var k = 0;
+  //cv['onRuntimeInitialized']=()=>{
+   /* let video = document.getElementById("cam_input"); // video is the id of video tag
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    .then(function(stream) {
+        video.srcObject = stream;
+        video.play();
+    })
+    .catch(function(err) {
+        console.log("An error occurred! " + err);
+    });*/
+	
+	debugger;
+	
+	let video = document.getElementById("test_video"); 
+    let src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+    let dst = new cv.Mat(video.height, video.width, cv.CV_8UC1);
+    let gray = new cv.Mat();
+    let cap = new cv.VideoCapture(test_video);
+    let faces = new cv.RectVector();
+    let classifier = new cv.CascadeClassifier();
+    let utils = new Utils('errorMessage');
+	
+    let faceCascadeFile = 'haarcascade_frontalface_default.xml'; // path to xml
+	//let faceCascadeFile = 'cars.xml';
+    utils.createFileFromUrl(faceCascadeFile, faceCascadeFile, () => {
+    classifier.load(faceCascadeFile); // in the callback, load the cascade from file 
+});
+    const FPS = 25;
+    function processVideo() {
+		var tarih = new Date();
+        let begin = Date.now();
+        cap.read(src);
+        src.copyTo(dst);
+        cv.cvtColor(dst, gray, cv.COLOR_RGBA2GRAY, 0);
+        try{
+            classifier.detectMultiScale(gray, faces, 1.1, 3, 0);
+           // console.log(faces.size());
+        }catch(err){
+		debugger;
+            console.log(err);
+        }
+        for (let i = 0; i < faces.size(); ++i) {
+            let face = faces.get(i);
+            let point1 = new cv.Point(face.x, face.y);
+			//console.log("x " +i+" = " + face.x);
+			//console.log("y " +i+" = " + face.y);
+            let point2 = new cv.Point(face.x + face.width, face.y + face.height);
+			if(face.y >giden_min_y && face.y <giden_max_y && face.x > giden_min_x && face.x < giden_max_x){
+				cv.rectangle(dst, point1, point2, [0, 0, 255, 255]);
+				if(face_x_giden[0] == face.x || face_x_giden[1] == face.x || face_x_giden[2] == face.x){
+					if(face_y_giden[0] == face.y || face_y_giden[1] == face.y || face_y_giden[2] == face.y){
+					
+					}
+					else{
+						face_x_giden[j] = face.x;
+						face_y_giden[j] = face.y;
+						j = j + 1;
+						if(sayac_kontrol == 0){
+							sayac2 = sayac2+1;
+							console.log("sayac2 = " +sayac2);
+						}
+						
+					}
+				}
+				else{
+					face_x_giden[j] = face.x;
+					face_y_giden[j] = face.y;
+					j = j + 1;
+					if(sayac_kontrol == 0){
+						sayac2 = sayac2+1;
+						console.log('"' +sayac2 + '. Giden Araç":[ ');
+						console.log('		"Tarih":' +tarih.getDate() + '/'+tarih.getMonth()  +'/' + tarih.getFullYear() );
+						console.log('		"Saat":' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']');
+						logs.innerHTML = logs.innerHTML + '"' +sayac2 + '. Giden Araç":[ ';
+						logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Tarih":&nbsp;' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() + "</br>";
+						logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Saat":&nbsp;' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']' + "</br>" + "</br>";
+					}
+				}
+				if( j > 2){
+					j = 0;
+				}
+			}
+			else if(face.y >gelen_min_y && face.y <gelen_max_y && face.x > gelen_min_x && face.x < gelen_max_x){
+				cv.rectangle(dst, point1, point2, [0, 255, 0, 255]);
+				if(face_x[0] == face.x || face_x[1] == face.x || face_x[2] == face.x){
+					if(face_y[0] == face.y || face_y[1] == face.y || face_y[2] == face.y){
+					
+					}
+					else{
+						face_x[k] = face.x;
+						face_y[k] = face.y;
+						k =k + 1;
+						if(sayac_kontrol == 0){
+							sayac = sayac+1;
+							console.log("sayac = " +sayac);
+						
+						}
+						
+					}
+				}
+				else{
+					face_x[k] = face.x;
+					face_y[k] = face.y;
+					k = k + 1;
+					if(sayac_kontrol == 0){
+						sayac = sayac+1;
+						console.log('"' +sayac + '. Gelen Araç":[ ');
+						console.log('		"Tarih":' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() );
+						console.log('		"Saat":' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']');
+						logs.innerHTML = logs.innerHTML + '"' +sayac + '. Gelen Araç":[ ';
+						logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Tarih":&nbsp;' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() + "</br>";
+						logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Saat":&nbsp;' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']' + "</br>" + "</br>";
+						
+						
+					}
+				}
+				if( k > 2){
+					k = 0;
+				}
+				
+			}
+			else{
+			cv.rectangle(dst, point1, point2, [255, 0, 0, 255]);
+			}
+			
+			tut1 = face_y[0] +face_y[1] +face_y[2];
+			tut1 = tut1 /3;
+			
+			/*if((tut1 -face_y[0])<2 && (tut1 -face_y[0])>-2 && (tut1 -face_y[1])<2 && (tut1 -face_y[1])>-2 && (tut1 -face_y[2])<2 && (tut1 -face_y[2])>-2 && sayac_kontrol == 0){
+					document.getElementById('sendmail').click();
+					console.log("girdi");
+				}*/
+			
+
+			if(sayac > 20 && mail_kontrol != 1){
+					document.getElementById('sendmail').click();
+					//console.log("girdi");
+					mail_kontrol = 1;
+			}
+			
+            document.getElementById("sayac").innerText = sayac;
+			document.getElementById("sayac2").innerText = sayac2;
+			//console.log(sayac);
+							
+        }
+		
+		
+		
+		//cv.line(dst, (20, 160), (100, 160), (0, 0, 255), 10); 
+		//cv.line(dst, point1, point2, lineColor, 2, cv.LINE_AA, 0);
+		var cnvs = document.createElement("canvas"); 
+		
+		//document.getElementById("xxx").appendChild(cnvs);
+      //  cv.imshow(cnvs, dst);
+		
+		cv.imshow(canvas_output, dst);
+		
+		
+	
+  var  dataUrl = cnvs.toDataURL(),
+    imageFoo = document.createElement('img');
+	imageFoo.src = dataUrl;
+
+// Style your image here
+imageFoo.style.width = '100px';
+imageFoo.style.height = '100px';
+
+// After you are done styling it, append it to the BODY element
+document.getElementById("xxx").appendChild(imageFoo);
+		
+		
+		
+		
+		
+        // schedule next one.
+        let delay = 500/FPS - (Date.now() - begin);
+		//let delay = 5;
+        setTimeout(processVideo, delay);
+}
+// schedule first one.
+setTimeout(processVideo, 0);
+ // };
+}
+var tut1 = 0;
+var tut2 = 0;
+var gelen_min_y = 400;
+var gelen_max_y = 435;
+var gelen_min_x = 0;
+var gelen_max_x = 1000;
+
+var giden_min_y = 310;
+var giden_max_y = 335;
+var giden_min_x = 900;
+var giden_max_x = 1150;
+
+var sayac_kontrol = 1;
+var sayac = parseInt(document.getElementById("sayac").innerText);
+	var sayac2 = parseInt(document.getElementById("sayac2").innerText);
+	var logs = document.getElementById("logs");
+function degis(konum){
+	var tarih = new Date();
+	if(konum == "gelen_min_y"){
+		gelen_min_y = document.getElementById(konum).value;
+		document.getElementById(konum +"_deger").innerText = gelen_min_y;
+		logs.innerHTML = logs.innerHTML + '"gelen_min_y Değiştirildi":[ &nbsp;' + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Yeni Değer":&nbsp; ' +gelen_min_y + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Tarih":&nbsp;' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Saat":&nbsp;' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']' + "</br>" + "</br>";
+		console.log('"gelen_min_y Değiştirildi":[ ');
+		console.log('"		"Yeni Değer": ' +gelen_min_y);
+		console.log('		"Tarih":' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() );
+		console.log('		"Saat":' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']');
+	}
+	else if(konum == "gelen_max_y"){
+		gelen_max_y = document.getElementById(konum).value;
+		document.getElementById(konum +"_deger").innerText = gelen_max_y;
+		logs.innerHTML = logs.innerHTML + '"gelen_max_y Değiştirildi":[ &nbsp;' + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Yeni Değer":&nbsp; ' +gelen_max_y + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Tarih":&nbsp;' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Saat":&nbsp;' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']' + "</br>" + "</br>";
+		console.log('"gelen_max_y Değiştirildi":[ ');
+		console.log('"		"Yeni Değer": ' +gelen_max_y);
+		console.log('		"Tarih":' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() );
+		console.log('		"Saat":' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']');
+	}
+	else if(konum == "gelen_min_x"){
+		gelen_min_x = document.getElementById(konum).value;
+		document.getElementById(konum +"_deger").innerText = gelen_min_x;
+		logs.innerHTML = logs.innerHTML + '"gelen_min_x Değiştirildi":[ &nbsp;' + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Yeni Değer":&nbsp; ' +gelen_min_x + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Tarih":&nbsp;' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Saat":&nbsp;' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']' + "</br>" + "</br>";
+		console.log('"gelen_min_x Değiştirildi":[ ');
+		console.log('"		"Yeni Değer": ' +gelen_min_x);
+		console.log('		"Tarih":' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() );
+		console.log('		"Saat":' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']');
+	}
+	else if(konum == "gelen_max_x"){
+		gelen_max_x = document.getElementById(konum).value;
+		document.getElementById(konum +"_deger").innerText = gelen_max_x;
+		logs.innerHTML = logs.innerHTML + '"gelen_max_x Değiştirildi":[ &nbsp;' + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Yeni Değer":&nbsp; ' +gelen_max_x + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Tarih":&nbsp;' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Saat":&nbsp;' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']' + "</br>" + "</br>";
+		console.log('"gelen_max_x Değiştirildi":[ ');
+		console.log('"		"Yeni Değer": ' +gelen_max_x);
+		console.log('		"Tarih":' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() );
+		console.log('		"Saat":' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']');
+	}
+	
+	
+	
+	else if(konum == "giden_min_y"){
+		giden_min_y = document.getElementById(konum).value;
+		document.getElementById(konum +"_deger").innerText = giden_min_y;
+		logs.innerHTML = logs.innerHTML + '"giden_min_y Değiştirildi":[ &nbsp;' + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Yeni Değer":&nbsp; ' +giden_min_y + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Tarih":&nbsp;' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Saat":&nbsp;' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']' + "</br>" + "</br>";
+		console.log('"giden_min_y Değiştirildi":[ ');
+		console.log('"		"Yeni Değer": ' +giden_min_y);
+		console.log('		"Tarih":' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() );
+		console.log('		"Saat":' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']');
+	}
+
+	else if(konum == "giden_max_y"){
+		giden_max_y = document.getElementById(konum).value;
+		document.getElementById(konum +"_deger").innerText = giden_max_y;
+		logs.innerHTML = logs.innerHTML + '"giden_max_y Değiştirildi":[ &nbsp;' + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Yeni Değer":&nbsp; ' +giden_max_y + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Tarih":&nbsp;' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Saat":&nbsp;' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']' + "</br>" + "</br>";
+		console.log('"giden_max_y Değiştirildi":[ ');
+		console.log('"		"Yeni Değer": ' +giden_max_y);
+		console.log('		"Tarih":' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() );
+		console.log('		"Saat":' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']');
+	}
+
+	else if(konum == "giden_min_x"){
+		giden_min_x = document.getElementById(konum).value;
+		document.getElementById(konum +"_deger").innerText = giden_min_x;
+		logs.innerHTML = logs.innerHTML + '"giden_min_x Değiştirildi":[ &nbsp;' + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Yeni Değer":&nbsp; ' +giden_min_x + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Tarih":&nbsp;' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Saat":&nbsp;' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']' + "</br>" + "</br>";
+		console.log('"giden_min_x Değiştirildi":[ ');
+		console.log('"		"Yeni Değer": ' +giden_min_x);
+		console.log('		"Tarih":' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() );
+		console.log('		"Saat":' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']');
+	}
+
+	else if(konum == "giden_max_x"){
+		giden_max_x = document.getElementById(konum).value;
+		document.getElementById(konum +"_deger").innerText = giden_max_x;
+		logs.innerHTML = logs.innerHTML + '"giden_max_x Değiştirildi":[ &nbsp;' + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Yeni Değer":&nbsp; ' +giden_max_x + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Tarih":&nbsp;' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() + "</br>";
+		logs.innerHTML = logs.innerHTML + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;		"Saat":&nbsp;' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']' + "</br>" + "</br>";
+		console.log('"giden_max_x Değiştirildi":[ ');
+		console.log('"		"Yeni Değer": ' +giden_max_x);
+		console.log('		"Tarih":' +tarih.getDate() + '/'+tarih.getMonth()  +'/'+tarih.getFullYear() );
+		console.log('		"Saat":' +tarih.getHours() + ':'+tarih.getMinutes()  +':'+tarih.getSeconds() +']');
+	}
+
+
+
+
+}
+function sayac_durum(durum){
+let startButton = document.getElementById("startButton");
+let stopButton = document.getElementById("stopButton");
+var kayit = document.getElementById("kayit");
+var cns_output = document.getElementById("canvas_output");
+	if(durum == "start"){
+		startButton.click();
+		sayac_kontrol = 0;
+		document.getElementsByName("sayac_durum")[0].style.display = "none";
+		document.getElementsByName("sayac_durum")[1].style.display = "";
+	}
+	else if(durum == "stop"){
+		stopButton.click();
+		kayit.style.display = "";
+		cns_output.style.display = "none";
+		sayac_kontrol = 1;
+		document.getElementsByName("sayac_durum")[0].style.display = "";
+		document.getElementsByName("sayac_durum")[1].style.display = "none";
+	}
+	else if(durum == "zero"){
+		document.getElementById("sayac").innerText = 0;
+		document.getElementById("sayac2").innerText = 0;
+		sayac = 0;
+		sayac2 = 0;
+	}
+}
+</script>
+
+
+
+
+</html>
